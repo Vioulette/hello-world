@@ -1,0 +1,269 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <math.h>
+#include <time.h>
+#include <stdlib.h>
+#include <algorithm>
+#include <stdio.h>
+
+using namespace std;
+
+struct customer
+{
+    double cust;
+    double xcoord;
+    double ycoord;
+    double demand;
+};
+
+customer table[100];
+double d1[10][100];
+double g[10][100];
+double g1[10][100];
+customer centroids[10];
+ofstream MyFlow("Q3Result.txt");
+
+customer createline(double cust, double xcoord, double ycoord, double demand)
+{
+    customer M;
+    M.cust=cust;
+    M.xcoord=xcoord;
+    M.ycoord=ycoord;
+    M.demand=demand;
+    return M;
+}
+
+void swap (int *a, int *b)
+{
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+void randomize (int arr[], int n)
+{
+    srand ( time(NULL) );
+    // Start from the last element and swap one by one. We don't
+    // need to run for the first element that's why i > 0
+    for (int i = n-1; i > 0; i--)
+    {
+        // Pick a random index from 0 to i
+        int j = rand() % (i+1);
+        // Swap arr[i] with the element at random index
+        swap(&arr[i], &arr[j]);
+    }
+}
+
+float distance(double x1, double x2, double y1, double y2)//calculates distance between two points
+{
+    float a=sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
+    return a;
+}
+
+double findmin(int r)
+{
+    double min;
+    min=d1[0][r];
+    for(int i=0; i<10; i++)
+    {
+        if(d1[i][r]<min)
+        {
+            min=d1[i][r];
+        }
+    }
+    return min;
+}
+
+float avgx(int r)//calculates the average x coord of row r
+{
+    double Sx=0;
+    int nx=0;
+    double Ax=0;
+    for(int j=0; j<100; j++)
+    {
+        if (g1[r][j]==1)
+        {Sx=table[j].xcoord+Sx;
+            nx=nx+1;}
+    }
+    Ax=Sx/nx;
+    return Ax;
+}
+
+float avgy(int r)//calculates the average y coord of row r
+{
+    double Sy=0;
+    int ny=0;
+    double Ay=0;
+    for(int j=0; j<100; j++)
+    {
+        if (g1[r][j]==1)
+        {Sy=table[j].ycoord+Sy;
+            ny=ny+1;}
+    }
+    Ay=Sy/ny;
+    return Ay;
+}
+
+float createDG()
+{
+    for (int i=0; i<10; i++)//saves the G matrix just created to g in order to compare later
+    {
+        for (int j=0; j<100; j++)
+        {
+            g[i][j]=g1[i][j];
+        }
+    }
+    for (int i=0; i<10; i++)//writes the rows of the D matrix
+    {
+        for(int j=0; j<100; j++)
+        {
+            d1[i][j]=distance(centroids[i].xcoord, table[j].xcoord, centroids[i].ycoord, table[j].ycoord);
+        }
+    }
+    for (int j=0; j<100; j++)//finds the minimum value in each column of the D matrix
+    {
+        for(int i=0; i<10; i++)
+        {
+            if(findmin(j)==d1[i][j]) g1[i][j]=1;
+            else g1[i][j]=0;
+        }
+    }
+    for(int j=0; j<100; j++)
+    {
+        for(int i=0; i<10; i++)
+        {
+            if(g1[i][j]==1) for(int k=i+1; k<10; k++) {g1[k][j]=0;};
+        }
+    }
+    cout << "The G matrix is: " << endl;
+    for(int i=0; i<10; i++)
+    {
+        for(int j=0; j<99; j++)
+        {
+            cout << g1[i][j];
+        }
+        cout << g1[i][99] << endl;
+    }
+    cout << endl;
+}
+
+int compare()//compares the previous G matrix to the new one to see if elements have moved groups
+{
+    int A=0;
+    for (int i=0; i<10; i++)
+    {
+        for (int j=0; j<100; j++)
+        {
+            if (g[i][j]==g1[i][j]) A=A+1;
+            else A=A;
+        }
+    }
+    return A;
+}
+
+double newcentroids()
+{
+    for(int i=0; i<10; i++)
+    {
+        centroids[i].xcoord=avgx(i);
+        centroids[i].ycoord=avgy(i);
+    }
+}
+
+void storeresults(int r)
+{
+    MyFlow << "Cluster " << r+1 << " is: " << endl;
+    for(int j=0; j<100; j++)
+    {
+        if (g1[r][j]==1) MyFlow << table[j].cust << " " << table[j].xcoord << ", " << table[j].ycoord << ", " << table[j].demand << endl;
+    }
+    MyFlow << endl;
+}
+
+double calcdem()
+{
+    int totaldemand;
+    int c=0;
+    for(int i=0; i<10; i++)
+    {
+        totaldemand=0;
+        for(int j=0; j<100; j++)
+        {
+            if(g1[i][j]==1) totaldemand=totaldemand+table[j].demand;
+        }
+        if(totaldemand>0 && totaldemand<=200) c=c+1;
+    }
+    return c;
+}
+
+int main()
+{
+    ifstream Flow("data.txt");
+    double cust;
+    double xcoord;
+    double ycoord;
+    double demand;
+    for (int i=0; i<100; i++)
+    {
+        Flow >> cust;
+        Flow >> xcoord;
+        Flow >> ycoord;
+        Flow >> demand;
+        table[i]=createline(cust, xcoord, ycoord, demand);
+    }
+    int arr[100];
+    for (int i=0; i<100; i++)
+    {
+        arr[i]=table[i].cust;
+    }
+    int n=100;
+    randomize(arr,n);
+    for (int i=0; i<10; i++)
+    {
+        int c=arr[i];
+        centroids[i].cust=table[c-1].cust;
+        centroids[i].xcoord=table[c-1].xcoord;
+        centroids[i].ycoord=table[c-1].ycoord;
+    }
+    createDG();
+    newcentroids();
+    int B;
+    int c;
+    while(B!=1000)
+    {
+        newcentroids();
+        createDG();
+        B=compare();
+    }
+    c=calcdem();
+    while(c!=10)
+    {
+        randomize(arr,n);
+        for (int i=0; i<10; i++)
+        {
+            int c=arr[i];
+            centroids[i].cust=table[c-1].cust;
+            centroids[i].xcoord=table[c-1].xcoord;
+            centroids[i].ycoord=table[c-1].ycoord;
+        }
+        createDG();
+        newcentroids();
+        while(B!=1000)
+        {
+            newcentroids();
+            createDG();
+            B=compare();
+        }
+        c=calcdem();
+    }
+    for (int i=0; i<10; i++)
+    {
+        storeresults(i);
+    }
+    return 0;
+}
+
+
+
