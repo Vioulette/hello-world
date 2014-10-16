@@ -1,0 +1,250 @@
+# Visual Analytics 2014-2015 - Assignment #1
+# Name: Mia Johnson
+
+# Import the standard library for loading web pages
+import os
+import urllib.request as urllib2
+from bs4 import BeautifulSoup
+import csv
+
+
+#I wrote one function for each section of this assignment.  Perhaps there was a
+# more efficient way to approach the problem, but this worked best for me. 
+
+# Assignment 1.1 - Write a function to fetch and save all
+# of the loyalty card pages found here: 
+# 'http://aviz.sacloplay.inria.fr/~isenberg/VA/loyalty/'
+loyalty_root = 'http://aviz.saclay.inria.fr/~isenberg/VA/loyalty/'
+loyalty_first = 'http://aviz.saclay.inria.fr/~isenberg/VA/loyalty/lc_output_0.html'
+
+#For Assignment 1.1, I opened the first loyalty card page, write to it an html 
+# file, saved it, then read it to find the "Next" link.  I then repeated this 
+# process for the remaining loyalty pages.  Perhaps my while loop could have 
+# started from the first page, but writing the code this way allowed me to check 
+# my script line by line as I added new code.
+
+def fetch_loyalty_pages():
+ print('TODO: Fetch loyalty pages and save them locally')
+ url_open = urllib2.urlopen(loyalty_first)
+ content = url_open.read()
+ if not os.path.exists('loyalty_cards'):
+  os.makedirs('loyalty_cards')
+ file_name = 'loyalty_cards' + '/' + 'lc_output_0' + '.html'
+ save_file = open(file_name, 'w')
+ save_file.write(content.decode('utf-8'))  
+ save_file.close()
+ read_file = open(file_name,'r')
+ html = read_file.read()
+ soup = BeautifulSoup(html)
+ next = soup.a
+ nextpage = next.get('href')
+ nextpageurl = loyalty_root + nextpage
+ while True:
+  try:
+   url_open = urllib2.urlopen(nextpageurl)
+   content = url_open.read()
+   file_name = 'loyalty_cards' + '/' + nextpage
+   save_file = open(file_name, 'w')
+   save_file.write(content.decode('utf-8'))
+   save_file.close()
+   read_file = open(file_name,'r')
+   html = read_file.read()
+   soup = BeautifulSoup(html)
+   next = soup.a
+   nextpage = next.get('href')
+   nextpageurl = loyalty_root + nextpage
+  except urllib2.URLError:
+   break
+ return None
+
+# Assignment 1.2 - Write a function that processes all
+#  of the saved loyalty card files and produces a CSV
+
+#For Assignment 1.2, I opened the first loyalty card file, read it, and parsed it 
+# using Beautiful Soup.  Then I found the first 'loyalty_row' and within that 
+# found the date, business, price, and the first and last name of the cardholder.
+#  I then wrote this information to a dictionary.  Then I told the program to 
+# continue on to the next 'sibling loyalty row' to get the next row of information.  
+# The program runs the while loop while there exists a 'sibling loyalty row'.  If 
+# it reaches the end of the page, it goes to the next page and loops through the
+# rows.  Then the rows that are saved in the dictionary are written to a csv file.
+
+def process_loyalty_pages():
+  print('TODO: Process loyalty pages to a CSV')
+  file_name = 'loyalty_cards' + '/' + 'lc_output_0.html'
+  read_file = open(file_name, 'r')
+  html = read_file.read()
+  soup = BeautifulSoup(html)
+  firstrow = soup.find(class_='loyalty_row')
+  firstdate = firstrow.find(class_='date').string
+  firstbiz = firstrow.find(class_='biz').string
+  firstprix = firstrow.find(class_='prix').string
+  firstcardholder = firstrow.find(class_='cardholder')
+  firstid = firstcardholder.find(class_='name')
+  firstname = firstid.get('title')
+  lc_dictionary = []
+  lc_row = {
+   'Date' : firstdate,
+   'Business' : firstbiz,
+   'Price' : firstprix,
+   'Name' : firstname
+  }
+  lc_dictionary.append(lc_row)
+  row = firstrow.find_next_sibling(class_='loyalty_row')
+  while True:
+    try:
+     date = row.find(class_='date').string
+     biz = row.find(class_='biz').string
+     prix = row.find(class_='prix').string
+     cardholder = row.find(class_='cardholder')
+     id = cardholder.find(class_='name')
+     name = id.get('title')
+     lc_row = {
+      'Date' : date,
+      'Business' : biz,
+      'Price' : prix,
+      'Name' : name
+     }
+     lc_dictionary.append(lc_row)
+     row = row.find_next_sibling(class_='loyalty_row')
+    except:
+     try: 
+      next = soup.a
+      nextpage = next.get('href')
+      file_name = 'loyalty_cards' + '/' + nextpage
+      read_file = open(file_name, 'r')
+      html = read_file.read()
+      soup = BeautifulSoup(html)
+      row = soup.find(class_='loyalty_row')
+     except:
+      break
+  csv_file_name = 'loyalty_cards.csv'
+  with open(csv_file_name, 'w', newline='') as csvfile:
+   writer = csv.DictWriter(csvfile, ['Date','Business','Price','Name'])
+   writer.writeheader()
+   for lc_row in lc_dictionary:
+    writer.writerow(lc_row)
+  return None
+
+# Assignment 1.3 - Write a function to fetch and save all
+# of the credit card pages found here: 
+# 'http://aviz.saclay.inria.fr/~isenberg/VA/credit/'
+credit_root = 'http://aviz.saclay.inria.fr/~isenberg/VA/credit/'
+credit_first = 'http://aviz.saclay.inria.fr/~isenberg/VA/credit/cc_first_output_Q0YPUSKB.html'
+
+#For parts 3 and 4, I took the above two functions and modified them for the credit 
+# pages.  Part 3 looks a lot like part 1 above, but in part 4, I told the program to
+# split the date/time/location stamp into three separate strings so that they could be 
+# stored in three different columns to more closely match the loyalty data.  
+
+def fetch_credit_pages():
+ print('TODO: Fetch credit pages and save them locally')
+ url_open = urllib2.urlopen(credit_first)
+ content = url_open.read()
+ if not os.path.exists('credit_cards'):
+  os.makedirs('credit_cards')
+ file_name = 'credit_cards' + '/' + 'first_credit' + '.html'
+ save_file = open(file_name, 'w')
+ save_file.write(content.decode('utf-8'))
+ save_file.close()
+ read_file = open(file_name,'r')
+ html = read_file.read()
+ soup = BeautifulSoup(html)
+ next = soup.a
+ nextpage = next.get('href')
+ nextpageurl = credit_root + nextpage
+ while True:
+  try:
+   url_open = urllib2.urlopen(nextpageurl)
+   content = url_open.read()
+   file_name = 'credit_cards' + '/' + nextpage
+   save_file = open(file_name, 'w')
+   save_file.write(content.decode('utf-8'))
+   save_file.close()
+   read_file = open(file_name,'r')
+   html = read_file.read()
+   soup = BeautifulSoup(html)
+   next = soup.a
+   nextpage = next.get('href')
+   nextpageurl = credit_root + nextpage
+  except urllib2.URLError:
+   break
+ return None
+
+# Assignment 1.4 - Write a function that processes all
+#  of the saved credit card files and produces a CSV
+
+def process_credit_pages():
+ print('TODO: Process credit pages to a CSV')
+ file_name = 'credit_cards' + '/' + 'first_credit.html'
+ read_file = open(file_name,'r')
+ html = read_file.read()
+ soup = BeautifulSoup(html)
+ firstrow = soup.find(class_='row_cc')
+ firstlastname = firstrow.find(class_='lastName').string
+ firsttimestamploc = firstrow.find(class_='timestampPlusLoc')
+ firstdatetimeloc = firsttimestamploc.find(class_='datetimeloc').string
+ delim = firstdatetimeloc.find(',')
+ ts = firstdatetimeloc[0:delim]
+ location = firstdatetimeloc[delim+2:]
+ firstprix = firstrow.find(class_='prix').string
+ firstfirstname = firstrow.find(class_='firstName').string
+ cc_dictionary =[]
+ cc_row = {
+  'Timestamp' : ts,
+  'Business' : location,
+  'Price' : firstprix,
+  'First Name' : firstfirstname,
+  'Last Name' : firstlastname
+ }
+ cc_dictionary.append(cc_row)
+ row = firstrow.find_next_sibling(class_='row_cc')
+ while True:
+  try:
+   lastname = row.find(class_='lastName').string
+   timestamploc = row.find(class_='timestampPlusLoc')
+   datetimeloc = timestamploc.find(class_='datetimeloc').string
+   delim = datetimeloc.find(',')
+   ts = datetimeloc[0:delim]
+   location = datetimeloc[delim+2:]
+   prix = row.find(class_='prix').string
+   prix.replace('$','')
+   firstname = row.find(class_='firstName').string
+   cc_row = {
+    'Timestamp' : ts,
+    'Business' : location,
+    'Price' : prix,
+    'First Name' : firstname,
+    'Last Name' : lastname
+   }
+   cc_dictionary.append(cc_row)
+   row = row.find_next_sibling(class_='row_cc')
+  except:
+   try:
+    next = soup.a
+    nextpage = next.get('href')
+    file_name = 'credit_cards' + '/' + nextpage
+    read_file = open(file_name,'r')
+    html = read_file.read()
+    soup = BeautifulSoup(html)
+    row = soup.find(class_='row_cc')
+   except:
+    break
+ csv_file_name = 'credit_cards.csv'
+ with open(csv_file_name, 'w', newline='') as csvfile:
+  writer = csv.DictWriter(csvfile, ['Timestamp','Business','Price','First Name','Last Name'])
+  writer.writeheader()
+  for cc_row in cc_dictionary:
+   writer.writerow(cc_row)
+ return None
+
+# If run from the command line, the script should fetch
+#  and then process both datasets.
+if __name__ == "__main__":
+  fetch_loyalty_pages()
+  process_loyalty_pages()
+  fetch_credit_pages()
+  process_credit_pages()
+
+# One way I could improve this script is to reduce the lines of code.  However, I 
+# decided to keep the script this way because I can read it more easily. 
