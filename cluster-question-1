@@ -1,0 +1,179 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <vector>
+#include <math.h>
+#include <time.h>
+
+using namespace std;
+
+struct meds
+{
+    string name;
+    int weight;
+    int pH;
+};
+
+meds table[4];
+double d1[2][4];
+double g[2][4];
+double g1[2][4];
+double c1x;
+double c1y;
+double c2x;
+double c2y;
+
+meds createline(string name, int weight, int pH)
+{
+    meds M;
+    M.name=name;
+    M.weight=weight;
+    M.pH=pH;
+    return M;
+}
+
+float distance(double x1, double x2, double y1, double y2)//calculates distance between two points
+{
+    float a=sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
+    return a;
+}
+
+float avgx(int r)//calculates the x-coor of the new c1 and c2 (r=0 for c1 r=1 for c2)
+{
+    double Sx=0;
+    int nx=0;
+    double Ax=0;
+    for(int i=0; i<4; i++)
+    {
+        if (g1[r][i]==1)
+        {Sx=table[i].weight+Sx;
+            nx=nx+1;}
+    }
+    Ax=Sx/nx;
+    return Ax;
+}
+
+float avgy(int r)//calculates the y-coor of the new c1 and c2 (r=0 for c1 r=1 for c2)
+{
+    double Sy=0;
+    int ny=0;
+    double Ay=0;
+    for(int i=0; i<4; i++)
+    {
+        if (g1[r][i]==1)
+        {Sy=table[i].pH+Sy;
+            ny=ny+1;}
+    }
+    Ay=Sy/ny;
+    return Ay;
+}
+
+float createDG(double c1x, double c1y, double c2x, double c2y)
+{
+    for (int i=0; i<2; i++)//saves the G matrix just created to g in order to compare later
+    {
+        for (int j=0; j<4; j++)
+        {
+            g[i][j]=g1[i][j];
+        }
+    }
+    for (int i=0; i<4; i++)//writes the first row of the D matrix
+    {
+        d1[0][i]=distance(c1x, table[i].weight, c1y, table[i].pH);
+    }
+    for (int i=0; i<4; i++)//writes the second row of the D matrix
+    {
+        d1[1][i]=distance(c2x, table[i].weight, c2y, table[i].pH);
+    }
+    cout << "The D matrix is: " << endl;//displays the D matrix
+    for (int i=0; i<2; i++)
+    {
+        for (int j=0; j<3; j++)
+        {
+            cout << d1[i][j] << ", ";
+        }
+        cout << d1[i][3] << endl;
+    }
+    for (int i=0; i<4; i++)//writes the G matrix
+    {
+        if (d1[1][i]<d1[0][i])
+        {g1[1][i]=1;}
+        else
+        {g1[1][i]=0;}
+        if (d1[1][i]>d1[0][i])
+        {g1[0][i]=1;}
+        else
+        {g1[0][i]=0;}
+    }
+    cout << "The G matrix is: " << endl;//displays the G matrix
+    for (int i=0; i<2; i++)
+    {
+        for (int j=0; j<3; j++)
+        {
+            cout << g1[i][j] << ", ";
+        }
+        cout << g1[i][3] << endl;
+    }
+}
+
+int compare()//compares the previous G matrix to the new one to see if elements have moved groups
+{
+    int A=0;
+    for (int i=0; i<2; i++)
+    {
+        for (int j=0; j<4; j++)
+        {
+            if (g[i][j]==g1[i][j]) A=A+1;
+            else A=A;
+        }
+    }
+    return A;
+}
+
+double newcentroids()
+{
+    c1x=avgx(0);
+    c1y=avgy(0);
+    c2x=avgx(1);
+    c2y=avgy(1);
+}
+
+int main()
+{
+    ifstream Flow("example.txt");
+    string word;
+    int weight;
+    int pH;
+    for (int i=0; i<4; i++)
+    {
+        Flow >> word;
+        Flow >> weight;
+        Flow >> pH;
+        table[i]=createline(word, weight, pH);
+    }
+    srand(time(NULL));
+    int c;
+    int d;
+    do {
+        c=rand()%3;
+        d=rand()%3;
+    } while (c==d);
+    c1x=table[c].weight;
+    c1y=table[c].pH;
+    c2x=table[d].weight;
+    c2y=table[d].pH;
+    createDG(c1x, c1y, c2x, c2y);
+    newcentroids();
+    createDG(c1x, c1y, c2x, c2y);
+    int B=compare();
+    while(B!=8)
+    {
+        newcentroids();
+        createDG(c1x, c1y, c2x, c2y);
+        B=compare();
+    }    
+    cout << "The above matrix is the final G maxtrix." << endl;
+    cout << c << " " << d;
+    return 0;
+}
+
